@@ -1,0 +1,103 @@
+-- [[ THƯ VIỆN GIAO DIỆN ]]
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("GEMINI HUB - BLOX FRUITS V2", "BloodTheme")
+
+-- [[ BIẾN ĐIỀU KHIỂN ]]
+_G.AutoFarm = false
+_G.BringMob = true
+_G.FastAttack = true
+_G.AutoStats = false
+
+-- [[ HÀM TỰ ĐỘNG CỘNG ĐIỂM (AUTO STATS) ]]
+spawn(function()
+    while wait(1) do
+        if _G.AutoStats then
+            -- Tự động cộng vào Melee và Defense để nhân vật trâu hơn
+            local args = { [1] = "AddPoint", [2] = "Melee", [3] = 1 }
+            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args))
+            local args2 = { [1] = "AddPoint", [2] = "Defense", [3] = 1 }
+            game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer(unpack(args2))
+        end
+    end
+end)
+
+-- [[ HÀM TỰ ĐỘNG ĐÁNH (FAST ATTACK) ]]
+spawn(function()
+    while wait() do
+        if _G.AutoFarm and _G.FastAttack then
+            pcall(function()
+                local tool = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool")
+                if tool then tool:Activate() end
+            end)
+        end
+    end
+end)
+
+-- [[ GIAO DIỆN CHÍNH ]]
+local MainTab = Window:NewTab("Auto Farm")
+local FarmSection = MainTab:NewSection("Cày Cấp Siêu Tốc")
+
+-- Bật/Tắt Auto Farm
+FarmSection:NewToggle("Bật Auto Farm Level", "Tự nhận nhiệm vụ & Di chuyển đánh quái", function(state)
+    _G.AutoFarm = state
+    
+    spawn(function()
+        while _G.AutoFarm do
+            wait(0.5)
+            local lp = game.Players.LocalPlayer
+            local char = lp.Character
+            
+            -- Kiểm tra nếu chưa có nhiệm vụ thì đi nhận
+            if not lp.PlayerGui.Main.Quest.Visible then
+                -- Vị trí NPC (Đây là ví dụ, script hub xịn sẽ tự đổi theo Level)
+                char.HumanoidRootPart.CFrame = CFrame.new(1059, 15, 1549) 
+                wait(0.5)
+                game:GetService("ReplicatedStorage").Remotes.CommF_:InvokeServer("StartQuest", "BanditQuest1", 1)
+            else
+                -- Đã có nhiệm vụ: Tìm và gom quái
+                for i, v in pairs(game:GetService("Workspace").Enemies:GetChildren()) do
+                    if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+                        repeat
+                            wait()
+                            -- CHIẾN THUẬT BẤT TỬ: Bay trên đầu quái
+                            char.HumanoidRootPart.CFrame = v.HumanoidRootPart.CFrame * CFrame.new(0, 7, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+                            
+                            -- Gom quái lại một chỗ
+                            if _G.BringMob then
+                                v.HumanoidRootPart.CanCollide = false
+                                v.HumanoidRootPart.Size = Vector3.new(50, 50, 50) -- Làm quái to ra để dễ đánh trúng
+                            end
+                        until not _G.AutoFarm or v.Humanoid.Health <= 0 or not lp.PlayerGui.Main.Quest.Visible
+                    end
+                end
+            end
+        end
+    end)
+end)
+
+FarmSection:NewToggle("Tự Động Cộng Điểm (Melee/Def)", "Tăng sức mạnh khi lên cấp", function(state)
+    _G.AutoStats = state
+end)
+
+-- [[ TAB TIỆN ÍCH ]]
+local MiscTab = Window:NewTab("Tiện Ích")
+local MiscSection = MiscTab:NewSection("Nhân Vật")
+
+MiscSection:NewSlider("Tốc Độ Chạy (Speed)", "Chỉnh tốc độ nhân vật", 500, 16, function(s)
+    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
+end)
+
+MiscSection:NewButton("Hồi Phục Máu (Fake God)", "Ép máu lên cao liên tục", function()
+    game:GetService("RunService").RenderStepped:Connect(function()
+        game.Players.LocalPlayer.Character.Humanoid.Health = game.Players.LocalPlayer.Character.Humanoid.MaxHealth
+    end)
+end)
+
+-- [[ CHỐNG VĂNG GAME (ANTI-AFK) ]]
+local VU = game:GetService("VirtualUser")
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    VU:CaptureController()
+    VU:ClickButton2(Vector2.new())
+end)
+
+print("Gemini Hub đã sẵn sàng! Nhấn giữ Header để di chuyển Menu.")
