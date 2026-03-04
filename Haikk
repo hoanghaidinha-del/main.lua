@@ -1,7 +1,13 @@
--- HAI HUB - MARU STYLE FULL
+-- HAI HUB FULL VERSION
 local player = game.Players.LocalPlayer
 
+-- Xoá GUI cũ nếu có
+if player.PlayerGui:FindFirstChild("HaiHubUI") then
+	player.PlayerGui.HaiHubUI:Destroy()
+end
+
 local gui = Instance.new("ScreenGui")
+gui.Name = "HaiHubUI"
 gui.Parent = player.PlayerGui
 gui.ResetOnSpawn = false
 
@@ -28,13 +34,26 @@ local main = Instance.new("Frame", gui)
 main.Size = UDim2.new(0,600,0,350)
 main.Position = UDim2.new(0.5,-300,0.5,-175)
 main.BackgroundColor3 = Color3.fromRGB(20,20,20)
+main.Visible = false
 main.Active = true
 main.Draggable = true
-main.Visible = false
 Instance.new("UICorner", main)
+
+local closeBtn = Instance.new("TextButton", main)
+closeBtn.Size = UDim2.new(0,30,0,30)
+closeBtn.Position = UDim2.new(1,-35,0,5)
+closeBtn.Text = "X"
+closeBtn.TextScaled = true
+closeBtn.BackgroundColor3 = Color3.fromRGB(255,60,60)
+closeBtn.TextColor3 = Color3.new(1,1,1)
+Instance.new("UICorner", closeBtn)
 
 openBtn.MouseButton1Click:Connect(function()
 	main.Visible = not main.Visible
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+	main.Visible = false
 end)
 
 -------------------------------------------------
@@ -92,31 +111,78 @@ local function createTab(name, posY)
 end
 
 local mainPage = createTab("Main", 60)
-local playerPage = createTab("Player", 110)
-local visualPage = createTab("Visual", 160)
-
 pages["Main"].Visible = true
 
 -------------------------------------------------
--- BUTTON CREATOR
+-- AUTO FARM SYSTEM
 -------------------------------------------------
 
-local function createButton(parent, text, y)
-	local btn = Instance.new("TextButton", parent)
-	btn.Size = UDim2.new(0.8,0,0,40)
-	btn.Position = UDim2.new(0.1,0,0,y)
-	btn.Text = text
-	btn.BackgroundColor3 = Color3.fromRGB(255,215,0)
-	btn.TextColor3 = Color3.new(0,0,0)
-	btn.TextScaled = true
-	Instance.new("UICorner", btn)
-	return btn
+local AutoFarm = false
+
+local function moveTo(position)
+	local tweenService = game:GetService("TweenService")
+	local character = player.Character
+	if character and character:FindFirstChild("HumanoidRootPart") then
+		local dist = (character.HumanoidRootPart.Position - position).Magnitude
+		local info = TweenInfo.new(dist / 120, Enum.EasingStyle.Linear)
+		local tween = tweenService:Create(character.HumanoidRootPart, info, {CFrame = CFrame.new(position)})
+		tween:Play()
+	end
 end
 
--------------------------------------------------
--- SAMPLE BUTTONS
--------------------------------------------------
+local function getNearestMob()
+	local enemies = workspace:FindFirstChild("Enemies")
+	if not enemies then return nil end
+	
+	local closest = nil
+	local minDist = math.huge
+	
+	for _,v in pairs(enemies:GetChildren()) do
+		if v:FindFirstChild("Humanoid") 
+		and v:FindFirstChild("HumanoidRootPart")
+		and v.Humanoid.Health > 0 then
+			
+			local dist = (player.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).Magnitude
+			
+			if dist < minDist then
+				minDist = dist
+				closest = v
+			end
+		end
+	end
+	
+	return closest
+end
 
-createButton(mainPage,"Main Option",0.1)
-createButton(playerPage,"Player Option",0.1)
-createButton(visualPage,"Visual Option",0.1)
+-- Toggle Button
+local toggle = Instance.new("TextButton", mainPage)
+toggle.Size = UDim2.new(0.8,0,0,40)
+toggle.Position = UDim2.new(0.1,0,0,20)
+toggle.Text = "Auto Farm : OFF"
+toggle.BackgroundColor3 = Color3.fromRGB(255,215,0)
+toggle.TextColor3 = Color3.new(0,0,0)
+toggle.TextScaled = true
+Instance.new("UICorner", toggle)
+
+toggle.MouseButton1Click:Connect(function()
+	AutoFarm = not AutoFarm
+	toggle.Text = "Auto Farm : " .. (AutoFarm and "ON" or "OFF")
+end)
+
+-- Farm Loop
+task.spawn(function()
+	while task.wait(0.2) do
+		if AutoFarm and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+			
+			local mob = getNearestMob()
+			
+			if mob then
+				moveTo(mob.HumanoidRootPart.Position + Vector3.new(0,10,0))
+				
+				local vu = game:GetService("VirtualUser")
+				vu:CaptureController()
+				vu:Button1Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+			end
+		end
+	end
+end)
